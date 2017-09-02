@@ -1,4 +1,7 @@
 #include"total head.h"
+#define py 3.1415926535897
+#define deg2rad py/180
+
 
 HINSTANCE hinst;
 
@@ -21,7 +24,6 @@ void cimagetest(HDC hdc)
 	CString stringimage = _T("제길바밤바.png");
 	CImage* image = new CImage;
 
-
 	HRESULT hresult = image->Load(stringimage);
 
 	if (FAILED(hresult))
@@ -31,7 +33,7 @@ void cimagetest(HDC hdc)
 	}
 
 	//image.BitBlt(hdc, 0, 0, SRCCOPY);
-	image->StretchBlt(hdc, 0, 0, 600, 600, SRCCOPY);
+	image->StretchBlt(hdc, 0, 0, 800, 600, SRCCOPY);
 
 	
 	delete image;
@@ -147,6 +149,25 @@ void check_move_white_box(int sel_positon, int pict_position[], int move_white_b
 
 }
 
+void init_re_point(POINT& ball_line, POINT& line_fin)
+{
+	ball_line.x = 100;
+	ball_line.y = 100;
+
+	line_fin.x = 300;
+	line_fin.y = 0;
+}
+
+void line_r_check(POINT& ball_line, POINT& line_fin, float& line_r)
+{
+	line_r = sqrt((ball_line.x - line_fin.x)*(ball_line.x - line_fin.x) + (ball_line.y - line_fin.y)*(ball_line.y - line_fin.y));
+}
+
+void move_ball(POINT& ball_line, POINT& line_fin, float rad, float line_r)
+{
+	ball_line.x = line_fin.x + line_r*cos(rad);
+	ball_line.y = line_fin.y + line_r*sin(rad);
+}
 
 
 LRESULT CALLBACK wndProc(HWND hwnd, UINT ismg, WPARAM wParam, LPARAM lParam)
@@ -166,6 +187,13 @@ LRESULT CALLBACK wndProc(HWND hwnd, UINT ismg, WPARAM wParam, LPARAM lParam)
 	TCHAR word[] = _T("대한민국");
 
 	
+	static POINT ball_line;
+	static POINT line_fin;
+	static float rad;
+	static float line_r;
+
+	static bool draw_line;//가볍게 공 선그리기 연습
+
 	static int count;//글을 쓰기 위한 것
 	static int oldx, oldy, newx, newy;//도형의 크기
 	static int pict_position[25];//총 
@@ -183,6 +211,7 @@ LRESULT CALLBACK wndProc(HWND hwnd, UINT ismg, WPARAM wParam, LPARAM lParam)
 	/*HPEN hpen, oldpen;
 	HBRUSH hbrush, oldbrush;*/
 
+	
 
 
 
@@ -198,6 +227,10 @@ LRESULT CALLBACK wndProc(HWND hwnd, UINT ismg, WPARAM wParam, LPARAM lParam)
 		hbit = (HBITMAP)LoadBitmap(hinst, MAKEINTRESOURCE(IDB_BITMAP2));
 		SetTimer(hwnd, 1, 70, NULL);
 		show_real_image = TRUE;
+		init_re_point(ball_line, line_fin);
+		rad = 0.0;
+		draw_line = false;
+		line_r = 0;
 
 		for (int i = 0; i < 25; ++i)
 		{
@@ -225,6 +258,17 @@ LRESULT CALLBACK wndProc(HWND hwnd, UINT ismg, WPARAM wParam, LPARAM lParam)
 		case VK_DOWN:
 			move_white_box = 4;
 			check_move_white_box(sel_position, pict_position, move_white_box);
+			break;
+
+		case VK_SPACE:
+			
+			if (draw_line == false)
+			{
+				line_r_check(ball_line, line_fin, line_r);
+				draw_line = true;
+			}
+			else
+				draw_line = false;
 			break;
 		}
 		InvalidateRgn(hwnd, NULL, TRUE);
@@ -312,6 +356,12 @@ LRESULT CALLBACK wndProc(HWND hwnd, UINT ismg, WPARAM wParam, LPARAM lParam)
 		oldfont = (HFONT)SelectObject(hdc, nfont);
 		SetTextColor(hdc, fcolor);
 
+		Ellipse(hdc, ball_line.x - 50, ball_line.y - 50, ball_line.x + 50, ball_line.y + 50);
+		if (draw_line == true)
+		{
+			MoveToEx(hdc, ball_line.x, ball_line.y, NULL);
+			LineTo(hdc, line_fin.x, line_fin.y);
+		}
 		/*memdc = CreateCompatibleDC(hdc);
 		memdc2 = CreateCompatibleDC(memdc);
 		if (hbit == NULL)
@@ -323,20 +373,21 @@ LRESULT CALLBACK wndProc(HWND hwnd, UINT ismg, WPARAM wParam, LPARAM lParam)
 		BitBlt(memdc, 0, 0, 520, 480, memdc2, 0, 0, SRCCOPY);
 		
 		SetBkMode(memdc, TRANSPARENT);
+
 		
 		BitBlt(hdc, 0, 0, 520, 480, memdc, 0, 0, SRCCOPY);*/
 	
-		if (show_real_image)
+		/*if (show_real_image)
 		{
 			real_picture(hdc, hbit, windowrect);
 		}
 		else
 		{
 			blind_picture(hdc, hbit, windowrect, pict_position, sel_position);
-		}
+		}*/
 
-		/*cimagetest(hdc);*/
-
+		
+		
 
 
 		/*SelectObject(memdc, oldbit);
@@ -370,11 +421,18 @@ LRESULT CALLBACK wndProc(HWND hwnd, UINT ismg, WPARAM wParam, LPARAM lParam)
 		case 1:
 			ypos += 1;
 			if (ypos > windowrect.bottom) ypos = -30;
-			InvalidateRgn(hwnd, NULL, FALSE);
+
+			if (draw_line)
+			{
+				rad += deg2rad;
+				move_ball(ball_line, line_fin, rad, line_r);
+			}
+			
+
+			InvalidateRgn(hwnd, NULL, TRUE);
 			return 0;
 			break;
 		case 2:
-
 			break;
 		}
 		InvalidateRgn(hwnd, NULL, TRUE);
